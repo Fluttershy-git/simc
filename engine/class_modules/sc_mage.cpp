@@ -366,6 +366,7 @@ public:
     bool fof_requires_freezing = true;
     bool il_requires_freezing = true;
     bool il_sort_by_freezing = false;
+    bool randomize_si_target = false;
   } options;
 
   // Pets
@@ -1797,6 +1798,19 @@ public:
     c *= 1.0 + p()->talents.mana_confluence->effectN( 1 ).percent();
 
     return c;
+  }
+
+  size_t available_targets( std::vector<player_t*>& tl ) const override
+  {
+    spell_t::available_targets( tl );
+
+    if ( tl.size() > 2 && p()->options.randomize_si_target
+      && data().affected_by( p()->talents.splitting_ice->effectN( 1 ) ) )
+    {
+      std::swap( tl[ 1 ], tl[ rng().range<size_t>( 1, tl.size() ) ] );
+    }
+
+    return tl.size();
   }
 
   void execute() override
@@ -4622,7 +4636,8 @@ struct splintering_ray_t final : public spell_t
     spell_t( n, p, p->find_spell( 418735 ) ),
     freezing_source( p->get_proc( "Freezing applied (Splintering Ray)" ) )
   {
-    background = proc = secondary_targets_only = true;
+    background = proc = true;
+    target_filter_callback = secondary_targets_only();
     base_dd_min = base_dd_max = 1.0;
     // TODO: Seems to hit 1 fewer target
     aoe--;
@@ -4921,7 +4936,8 @@ struct frostfire_empowerment_t final : public spell_t
     spell_t( n, p, p->find_spell( 431186 ) ),
     freezing_source( p->get_proc( "Freezing applied (Frostfire Empowerment)" ) )
   {
-    background = proc = secondary_targets_only = true;
+    background = proc = true;
+    target_filter_callback = secondary_targets_only();
     aoe = -1;
     base_dd_min = base_dd_max = 1.0;
     // TODO: Check how it behaves wrt the excluded main target
@@ -4946,7 +4962,8 @@ struct flash_freezeburn_t final : public spell_t
     spell_t( n, p, p->find_spell( 1278079 ) ),
     freezing_source( p->get_proc( "Freezing applied (Flash Freezeburn)" ) )
   {
-    background = proc = secondary_targets_only = true;
+    background = proc = true;
+    target_filter_callback = secondary_targets_only();
     base_dd_min = base_dd_max = 1.0;
     // TODO: Usually hits one fewer target
     // It's possible it picks 5 random targets and if one of them happens to be
@@ -4968,7 +4985,8 @@ struct controlled_instincts_t final : public spell_t
   controlled_instincts_t( std::string_view n, mage_t* p ) :
     spell_t( n, p, p->find_spell( p->specialization() == MAGE_FROST ? 444487 : 444720 ) )
   {
-    background = proc = secondary_targets_only = true;
+    background = proc = true;
+    target_filter_callback = secondary_targets_only();
     // Only hits 5 targets despite max_targets being 6
     aoe -= 1;
     // TODO: The tooltip still mentions this, but it's untestable at the moment since it can't hit 6 or more targets
@@ -5624,6 +5642,7 @@ void mage_t::create_options()
   add_option( opt_bool( "mage.fof_requires_freezing", options.fof_requires_freezing ) );
   add_option( opt_bool( "mage.il_requires_freezing", options.il_requires_freezing ) );
   add_option( opt_bool( "mage.il_sort_by_freezing", options.il_sort_by_freezing ) );
+  add_option( opt_bool( "mage.randomize_si_target", options.randomize_si_target ) );
   player_t::create_options();
 }
 
